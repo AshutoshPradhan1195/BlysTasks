@@ -1,0 +1,17 @@
+pandas==3.0.2
+numpy==1.26.4
+scikit-learn==1.6.1
+joblib==1.5.3
+matplotlib==3.10.8
+tqdm==4.67.3
+nltk==3.9.4
+transformers==5.5.4
+datasets==4.8.4
+# Install CPU-only PyTorch; swap index URL for a CUDA build if needed:
+# https://download.pytorch.org/whl/cu121
+torch==2.11.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+fastapi==0.135.3
+uvicorn==0.44.0
+
+# Chatbot LLM backend (Ollama Python client)
+ollama==0.6.1
