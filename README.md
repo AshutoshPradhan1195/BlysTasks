@@ -13,12 +13,14 @@ and an appointment-management chatbot.
 
 Exploratory data analysis on 5,000 customer records (`customers_5000.csv`).
 
-| Step | Description |
-|------|-------------|
+
+| Step          | Description                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------- |
 | Preprocessing | Missing-value imputation, feature engineering (`Days_Since_Last_Visit`, VADER sentiment scores) |
-| Segmentation | K-Means clustering (k = 5) on booking frequency, avg spending, sentiment, and recency |
-| Overlays | Rule-based high-value flag (top-75th-percentile spend + frequency) and churn-risk scoring |
-| Output | Segment profiles and actionable retention/growth recommendations per cluster |
+| Segmentation  | K-Means clustering (k = 5) on booking frequency, avg spending, sentiment, and recency           |
+| Overlays      | Rule-based high-value flag (top-75th-percentile spend + frequency) and churn-risk scoring       |
+| Output        | Segment profiles and actionable retention/growth recommendations per cluster                    |
+
 
 See [customer_analysis.md](customer_analysis.md) for the full written report.
 
@@ -27,12 +29,14 @@ See [customer_analysis.md](customer_analysis.md) for the full written report.
 A FastAPI application exposing three endpoints, each backed by its own service class
 in [services/](services/).
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/recommend` | POST | Collaborative-filtering service recommendations for a customer |
-| `/classify-intent` | POST | BERT-based intent classification for a text query |
-| `/chat` | POST | Stateful appointment-management chatbot (book / reschedule / cancel) |
-| `/chat/reset` | POST | Explicitly terminate a chat session |
+
+| Endpoint           | Method | Purpose                                                              |
+| ------------------ | ------ | -------------------------------------------------------------------- |
+| `/recommend`       | POST   | Collaborative-filtering service recommendations for a customer       |
+| `/classify-intent` | POST   | BERT-based intent classification for a text query                    |
+| `/chat`            | POST   | Stateful appointment-management chatbot (book / reschedule / cancel) |
+| `/chat/reset`      | POST   | Explicitly terminate a chat session                                  |
+
 
 ---
 
@@ -74,23 +78,18 @@ Fresh message
 
 - Python 3.10 or later
 - **LLM backend — choose one:**
-
-  **Option A — Ollama (local, default):**
-  [Ollama](https://ollama.com) installed and running locally with the `gemma4:e4b` model pulled.
-
+**Option A — Ollama (local, default):**
+[Ollama](https://ollama.com) installed and running locally with the `gemma4:e4b` model pulled.
   ```bash
   ollama pull gemma4:e4b
   ```
-
   **Option B — OpenAI:**
   An OpenAI API key. Install the client and set your key:
-
   ```bash
   pip install openai
   export OPENAI_API_KEY="sk-..."   # macOS/Linux
   set OPENAI_API_KEY=sk-...        # Windows
   ```
-
   Then follow the commented-out instructions in `services/ChatbotService.py` to switch
   the chatbot from Ollama to the OpenAI client.
 
@@ -111,15 +110,42 @@ source .venv/bin/activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Install Jupyter and launch the notebook
+pip install jupyter
+jupyter notebook Notebook.ipynb
 ```
 
 > **Note on PyTorch:** `requirements.txt` pins the CPU-only build. For a CUDA build,
 > replace the `--extra-index-url` line with the appropriate URL from
-> https://download.pytorch.org/whl/cu121 (or your CUDA version).
+> [https://download.pytorch.org/whl/cu121](https://download.pytorch.org/whl/cu121) (or your CUDA version).
+
+---
+
+## Running the Notebook (required before starting the API)
+
+> **Important:** You **must** run the notebook in full before starting the API.
+> The notebook trains and serialises the models (`recommendation_model.pkl`,
+> `intent-classifier-model/`, `query-tokenizer/`, `label_encoder.pkl`) that the
+> API loads on startup. Skipping this step will cause the API to fail.
+
+**Steps:**
+
+1. Make sure your virtual environment is activated and dependencies are installed (see [Installation](#installation) above).
+2. Launch Jupyter:
+  ```bash
+   jupyter notebook Notebook.ipynb
+  ```
+3. In the Jupyter interface, open `Notebook.ipynb` if it is not already open.
+4. Run every cell in order: **Kernel → Restart & Run All** (or press `Shift+Enter` through each cell).
+5. Wait for all cells to finish. When the last cell completes without errors, the required model artefacts have been written to disk.
+6. You can now close or leave the notebook and proceed to start the API.
 
 ---
 
 ## Running the API
+
+> **Prerequisite:** Complete the [notebook run](#running-the-notebook-required-before-starting-the-api) above first.
 
 ```bash
 uvicorn api:app --reload
@@ -133,17 +159,21 @@ Interactive docs are available at `http://127.0.0.1:8000/docs`.
 ## API Usage
 
 ### GET `/`
+
 Health-check — returns `{"Hello": "World"}`.
 
 ---
 
 ### POST `/recommend`
+
 Returns the top-N service recommendations for a customer based on collaborative filtering.
 
-| Query param | Type | Default | Description |
-|-------------|------|---------|-------------|
-| `customer_id` | string | `CUST00001` | Customer identifier |
-| `num_recommendations` | int | `3` | Number of services to return |
+
+| Query param           | Type   | Default     | Description                  |
+| --------------------- | ------ | ----------- | ---------------------------- |
+| `customer_id`         | string | `CUST00001` | Customer identifier          |
+| `num_recommendations` | int    | `3`         | Number of services to return |
+
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/recommend?customer_id=CUST00042&num_recommendations=3"
@@ -156,11 +186,14 @@ curl -X POST "http://127.0.0.1:8000/recommend?customer_id=CUST00042&num_recommen
 ---
 
 ### POST `/classify-intent`
+
 Classifies the intent of a free-text query.
 
-| Query param | Type | Description |
-|-------------|------|-------------|
-| `text` | string | User message to classify |
+
+| Query param | Type   | Description              |
+| ----------- | ------ | ------------------------ |
+| `text`      | string | User message to classify |
+
 
 Possible intents: `booking`, `reschedule`, `cancellation`, `pricing`, `general_query`.
 
@@ -175,13 +208,16 @@ curl -X POST "http://127.0.0.1:8000/classify-intent?text=I+want+to+cancel+my+app
 ---
 
 ### POST `/chat`
+
 Stateful conversational endpoint. Pass the returned `session_id` in subsequent requests
 to continue the same conversation.
 
-| Query param | Type | Default | Description |
-|-------------|------|---------|-------------|
-| `text` | string | — | User message |
+
+| Query param  | Type   | Default        | Description                             |
+| ------------ | ------ | -------------- | --------------------------------------- |
+| `text`       | string | —              | User message                            |
 | `session_id` | string | auto-generated | Session identifier (omit on first turn) |
+
 
 ```bash
 # Turn 1 — new session
@@ -200,6 +236,7 @@ automatically closed and the appointment action has been executed.
 ---
 
 ### POST `/chat/reset`
+
 Explicitly discard a session before it naturally completes.
 
 ```bash
@@ -208,26 +245,18 @@ curl -X POST "http://127.0.0.1:8000/chat/reset?session_id=<session_id>"
 
 ---
 
-## Running the Analysis Notebook
-
-```bash
-pip install jupyter
-jupyter notebook Section1.ipynb
-```
-
-Run all cells in order. Outputs (cluster plots, summary tables) are generated inline.
-
----
-
 ## Project Dependencies
 
-| Library | Purpose |
-|---------|---------|
-| `pandas`, `numpy` | Data processing |
-| `scikit-learn` | K-Means, SVD, StandardScaler, cosine similarity |
-| `nltk` (VADER) | Sentiment scoring on review text |
-| `transformers`, `torch` | Fine-tuned BERT intent classifier |
-| `joblib` | Model serialisation helpers |
-| `fastapi`, `uvicorn` | REST API framework and ASGI server |
-| `ollama` | Local LLM client (Gemma 4 for chatbot responses) — or use `openai` as an alternative |
-| `matplotlib` | Visualisations in the notebook |
+
+| Library                 | Purpose                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `pandas`, `numpy`       | Data processing                                                                      |
+| `scikit-learn`          | K-Means, SVD, StandardScaler, cosine similarity                                      |
+| `nltk` (VADER)          | Sentiment scoring on review text                                                     |
+| `transformers`, `torch` | Fine-tuned BERT intent classifier                                                    |
+| `joblib`                | Model serialisation helpers                                                          |
+| `fastapi`, `uvicorn`    | REST API framework and ASGI server                                                   |
+| `ollama`                | Local LLM client (Gemma 4 for chatbot responses) — or use `openai` as an alternative |
+| `matplotlib`            | Visualisations in the notebook                                                       |
+
+
